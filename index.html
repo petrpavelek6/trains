@@ -11,112 +11,166 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #0d0d0d;
+      background: #111;
       color: #e0e0e0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 16px;
-      padding-bottom: env(safe-area-inset-bottom);
+      padding-bottom: calc(16px + env(safe-area-inset-bottom));
     }
 
+    /* ── Header ── */
     header {
       background: #1a1a1a;
-      border-bottom: 1px solid #333;
-      padding: 14px 16px 10px;
+      border-bottom: 1px solid #2a2a2a;
+      padding: 12px 16px 10px;
+      padding-top: calc(12px + env(safe-area-inset-top));
       position: sticky;
       top: 0;
       z-index: 10;
-      padding-top: calc(14px + env(safe-area-inset-top));
-    }
-
-    header h1 {
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: 0.3px;
-    }
-
-    header .meta {
-      font-size: 13px;
-      color: #888;
-      margin-top: 2px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
+    header h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    header .right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #clock {
+      font-size: 16px;
+      font-weight: 600;
+      color: #aaa;
+      font-variant-numeric: tabular-nums;
+    }
+
     #btn-refresh {
       background: #2a2a2a;
-      border: 1px solid #444;
-      color: #ccc;
+      border: 1px solid #3a3a3a;
+      color: #bbb;
       font-size: 13px;
-      padding: 5px 12px;
-      border-radius: 6px;
+      padding: 6px 14px;
+      border-radius: 8px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
+    #btn-refresh:active  { background: #383838; }
+    #btn-refresh:disabled { opacity: 0.4; }
 
-    #btn-refresh:active { background: #3a3a3a; }
-    #btn-refresh:disabled { opacity: 0.5; }
-
+    /* ── Status bar ── */
     #status {
-      font-size: 13px;
-      color: #666;
-      padding: 8px 16px;
-      min-height: 30px;
+      font-size: 12px;
+      color: #555;
+      padding: 6px 16px;
+      min-height: 26px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
+    /* ── Karty vlaků ── */
+    #content {
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    tr { border-bottom: 1px solid #1f1f1f; }
-    tr:last-child { border-bottom: none; }
-
-    td {
-      padding: 10px 8px;
-      vertical-align: middle;
-      white-space: nowrap;
+    .card {
+      background: #1c1c1c;
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-rows: auto auto auto;
+      column-gap: 16px;
     }
 
-    td:first-child { padding-left: 16px; }
-    td:last-child  { padding-right: 16px; }
+    /* Velký čas vlevo – zabírá 2 řádky */
+    .card-time {
+      grid-column: 1;
+      grid-row: 1 / 3;
+      font-size: 44px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: -1px;
+      font-variant-numeric: tabular-nums;
+      align-self: center;
+      min-width: 110px;
+    }
 
-    .col-time   { font-size: 20px; font-weight: 700; color: #fff; min-width: 52px; }
-    .col-train  { font-size: 14px; color: #aaa; min-width: 70px; }
-    .col-dir    { font-size: 13px; color: #777; min-width: 100px; }
-    .col-route  { font-size: 14px; color: #ccc; width: 100%; }
-    .col-route .from { color: #aaa; font-size: 13px; }
-    .col-route .arrow { color: #555; margin: 0 4px; }
-    .col-route .to { color: #ddd; }
-    .col-delay  { font-size: 14px; font-weight: 600; text-align: right; white-space: nowrap; min-width: 70px; }
-
-    .delay-ok   { color: #4caf50; }
-    .delay-warn { color: #ffc107; }
-    .delay-late { color: #f44336; }
+    /* Zpoždění – vpravo nahoře */
+    .card-delay {
+      grid-column: 2;
+      grid-row: 1;
+      font-size: 18px;
+      font-weight: 700;
+      text-align: right;
+      align-self: start;
+    }
+    .delay-ok    { color: #4caf50; }
+    .delay-warn  { color: #ffc107; }
+    .delay-late  { color: #f44336; }
     .delay-early { color: #888; }
 
-    .actual-time { font-size: 12px; color: #888; margin-left: 4px; }
+    /* Dopravce + typ + číslo – vpravo uprostřed */
+    .card-train {
+      grid-column: 2;
+      grid-row: 2;
+      font-size: 15px;
+      color: #ccc;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
 
     .carrier-badge {
-      display: inline-block;
       font-size: 11px;
-      font-weight: 700;
-      padding: 1px 5px;
-      border-radius: 3px;
-      margin-right: 4px;
-      vertical-align: middle;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.3px;
     }
-    .carrier-CD  { background: #1a3a6b; color: #7eb3ff; }
-    .carrier-RJ  { background: #4a1a00; color: #ffaa44; }
-    .carrier-LE  { background: #001a4a; color: #44aaff; }
-    .carrier-GW  { background: #1a2a1a; color: #88cc88; }
-    .carrier-XX  { background: #2a2a2a; color: #999; }
+    .carrier-CD { background: #1a3a6b; color: #7eb3ff; }
+    .carrier-RJ { background: #4a1a00; color: #ffaa44; }
+    .carrier-LE { background: #001a4a; color: #44aaff; }
+    .carrier-GW { background: #1a2a1a; color: #88cc88; }
+    .carrier-XX { background: #2a2a2a; color: #999; }
 
+    .train-type { font-weight: 700; color: #ddd; }
+    .train-num  { color: #888; }
+
+    /* Směr – pod časem, přes oba sloupce */
+    .card-dir {
+      grid-column: 1 / 3;
+      grid-row: 3;
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #2a2a2a;
+    }
+    .dir-kyje      { color: #4a9eff; }
+    .dir-bechovice { color: #ff9a3c; }
+    .dir-unknown   { color: #666; }
+
+    .card-route {
+      font-size: 13px;
+      color: #777;
+      margin-top: 3px;
+    }
+    .card-route .sep { margin: 0 5px; color: #444; }
+
+    /* ── Prázdný stav ── */
     #empty {
       text-align: center;
-      color: #555;
-      padding: 40px 16px;
+      color: #444;
+      padding: 60px 16px;
       font-size: 15px;
     }
   </style>
@@ -124,9 +178,9 @@
 <body>
 
 <header>
-  <h1 id="station-name">Praha – Dolní Počernice</h1>
-  <div class="meta">
-    <span id="header-time">příštích 30 min</span>
+  <h1>Praha – Dolní Počernice</h1>
+  <div class="right">
+    <span id="clock"></span>
     <button id="btn-refresh" onclick="refresh()">Obnovit</button>
   </div>
 </header>
@@ -137,7 +191,6 @@
 <script>
 const CONFIG = {
   stationSR70:   '53036',
-  stationName:   'Praha – Dolní Počernice',
   windowMinutes: 30,
   bbox: { xMin: -850000, xMax: -620000, yMin: -1150000, yMax: -950000 },
   concurrency:   30,
@@ -145,17 +198,20 @@ const CONFIG = {
 
 const BASE_URL = 'https://mapy.spravazeleznic.cz/serverside/request2.php'
 
-// ── API ──────────────────────────────────────────────────────────────────────
+// ── Hodiny v headeru ─────────────────────────────────────────────────────────
+setInterval(() => {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}, 1000)
 
+// ── API ──────────────────────────────────────────────────────────────────────
 async function apiPost(module, action, params = {}) {
   const body = new URLSearchParams({ module, action, ...params })
   const res = await fetch(
     `${BASE_URL}?module=${encodeURIComponent(module)}&&action=${encodeURIComponent(action)}`,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
       body,
     }
   )
@@ -163,7 +219,6 @@ async function apiPost(module, action, params = {}) {
 }
 
 // ── XOR dekódování ────────────────────────────────────────────────────────────
-
 function xorDecode(b64) {
   const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
   const today = new Date()
@@ -171,7 +226,7 @@ function xorDecode(b64) {
     const d = new Date(today)
     d.setDate(d.getDate() + delta)
     const key = new TextEncoder().encode(
-      d.getFullYear().toString() +
+      d.getFullYear() +
       String(d.getMonth() + 1).padStart(2, '0') +
       String(d.getDate()).padStart(2, '0')
     )
@@ -182,13 +237,12 @@ function xorDecode(b64) {
 }
 
 // ── Parser trasy vlaku ────────────────────────────────────────────────────────
-
 function parseRoute(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   const stops = []
   for (const tr of doc.querySelectorAll('tr')) {
     const tds = tr.querySelectorAll('td')
-    if (tds.length < 1) continue
+    if (!tds.length) continue
     const nameTd = tds[0]
     const name = nameTd.textContent.trim()
     if (!name) continue
@@ -204,7 +258,6 @@ function parseRoute(html) {
 }
 
 // ── Pomocné funkce ────────────────────────────────────────────────────────────
-
 function timeInWindow(timeStr, now, windowMin) {
   timeStr = timeStr.trim().replace(/[()]/g, '')
   if (!timeStr || !timeStr.includes(':')) return false
@@ -219,10 +272,7 @@ async function promisePool(items, fn, concurrency) {
   const results = new Array(items.length)
   let idx = 0
   async function worker() {
-    while (idx < items.length) {
-      const i = idx++
-      results[i] = await fn(items[i], i)
-    }
+    while (idx < items.length) { const i = idx++; results[i] = await fn(items[i]) }
   }
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker))
   return results
@@ -236,24 +286,22 @@ function carrierInfo(d) {
   return { label: d.slice(0, 2) || '?', cls: 'carrier-XX' }
 }
 
-function dirStr(prev) {
-  if (!prev) return ''
-  if (prev.includes('Kyje'))      return '← Kyje'
-  if (prev.includes('Běchovice')) return '← Běchovice'
-  return '← ' + prev.slice(0, 14)
+function dirInfo(prev) {
+  if (!prev) return { text: '', cls: 'dir-unknown' }
+  if (prev.includes('Kyje'))      return { text: '→ Kyje',       cls: 'dir-kyje' }
+  if (prev.includes('Běchovice')) return { text: '← Běchovice',  cls: 'dir-bechovice' }
+  return { text: '← ' + prev.slice(0, 16), cls: 'dir-unknown' }
 }
 
-function delayInfo(delay, actual, sched) {
+function delayInfo(delay) {
   const d = Number(delay) || 0
-  const showActual = actual && actual !== sched ? actual : ''
-  if (d > 5)  return { text: `+${d} min`, cls: 'delay-late',  actual: showActual }
-  if (d > 0)  return { text: `+${d} min`, cls: 'delay-warn',  actual: showActual }
-  if (d < 0)  return { text: `${d} min`,  cls: 'delay-early', actual: showActual }
-  return       { text: 'včas',            cls: 'delay-ok',    actual: showActual }
+  if (d > 5)  return { text: `+${d} min`, cls: 'delay-late' }
+  if (d > 0)  return { text: `+${d} min`, cls: 'delay-warn' }
+  if (d < 0)  return { text: `${d} min`,  cls: 'delay-early' }
+  return       { text: 'včas',            cls: 'delay-ok' }
 }
 
 // ── Hlavní logika ─────────────────────────────────────────────────────────────
-
 async function findPassingTrains() {
   const resp = await apiPost('Layers\\OsVlaky', 'load2')
   let encoded = resp.result
@@ -262,10 +310,7 @@ async function findPassingTrains() {
 
   const { xMin, xMax, yMin, yMax } = CONFIG.bbox
   const nearby = trains
-    .filter(t => {
-      const [x, y] = t.g.c
-      return x >= xMin && x <= xMax && y >= yMin && y <= yMax
-    })
+    .filter(t => { const [x, y] = t.g.c; return x >= xMin && x <= xMax && y >= yMin && y <= yMax })
     .map(t => t.p)
 
   setStatus(`Vlaky v oblasti: ${nearby.length} – stahuji trasy…`)
@@ -275,16 +320,14 @@ async function findPassingTrains() {
 
   async function fetchAndMatch(t) {
     try {
-      const b64 = btoa(t.id)
       const detail = await apiPost('Layers\\OsVlaky', 'loadDetail', {
-        trainNumber: b64,
-        onlyCommercialStop: 0,
+        trainNumber: btoa(t.id), onlyCommercialStop: 0,
       })
       const stops = parseRoute(detail.detail || '')
       for (let i = 0; i < stops.length; i++) {
         const stop = stops[i]
         if (stop.sr70 !== CONFIG.stationSR70) continue
-        const times = stop.times
+        const times  = stop.times
         const sched  = times[0] || ''
         const actual = times[1] ? times[1].replace(/[()]/g, '') : ''
         const check  = actual || sched
@@ -303,25 +346,21 @@ async function findPassingTrains() {
     } catch {}
     finally {
       done++
-      if (done % 20 === 0 || done === nearby.length) {
-        setStatus(`Načítám trasy… ${done} / ${nearby.length}`)
-      }
+      if (done % 20 === 0 || done === nearby.length) setStatus(`Načítám trasy… ${done} / ${nearby.length}`)
     }
     return null
   }
 
   const raw = await promisePool(nearby, fetchAndMatch, CONFIG.concurrency)
-  return raw
-    .filter(Boolean)
-    .sort((a, b) => a.sched.localeCompare(b.sched))
+  return raw.filter(Boolean).sort((a, b) => a.sched.localeCompare(b.sched))
 }
 
 // ── Vykreslení ────────────────────────────────────────────────────────────────
-
 function renderResults(results, elapsed) {
-  const now = new Date()
-  const timeStr = now.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  setStatus(`${results.length} vlak${results.length === 1 ? '' : results.length < 5 ? 'y' : 'ů'} · obnoveno ${timeStr} · ${(elapsed / 1000).toFixed(1)}s`)
+  const t = new Date()
+  const ts = t.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const n = results.length
+  setStatus(`${n} vlak${n === 1 ? '' : n < 5 ? 'y' : 'ů'} · obnoveno ${ts} · ${(elapsed/1000).toFixed(1)}s`)
 
   const content = document.getElementById('content')
   if (!results.length) {
@@ -329,46 +368,37 @@ function renderResults(results, elapsed) {
     return
   }
 
-  const rows = results.map(r => {
-    const c = carrierInfo(r.carrier)
-    const dl = delayInfo(r.delay, r.actual, r.sched)
-    const dir = dirStr(r.prevStop)
-    const actualSpan = dl.actual
-      ? `<span class="actual-time">→ ${dl.actual}</span>` : ''
-    return `<tr>
-      <td class="col-time">${r.sched}</td>
-      <td class="col-train">
+  content.innerHTML = results.map(r => {
+    const c  = carrierInfo(r.carrier)
+    const dl = delayInfo(r.delay)
+    const di = dirInfo(r.prevStop)
+    return `<div class="card">
+      <div class="card-time">${r.sched}</div>
+      <div class="card-delay ${dl.cls}">${dl.text}</div>
+      <div class="card-train">
         <span class="carrier-badge ${c.cls}">${c.label}</span>
-        <span style="font-weight:600">${r.trainType}</span>
-        <span style="color:#888">${r.trainNum}</span>
-      </td>
-      <td class="col-dir">${dir}</td>
-      <td class="col-route">
-        <span class="from">${r.from}</span>
-        <span class="arrow">→</span>
-        <span class="to">${r.to}</span>
-      </td>
-      <td class="col-delay ${dl.cls}">${dl.text}${actualSpan}</td>
-    </tr>`
+        <span class="train-type">${r.trainType}</span>
+        <span class="train-num">${r.trainNum}</span>
+      </div>
+      <div class="card-dir ${di.cls}">
+        ${di.text}
+        <div class="card-route">${r.from}<span class="sep">→</span>${r.to}</div>
+      </div>
+    </div>`
   }).join('')
-
-  content.innerHTML = `<table>${rows}</table>`
 }
 
 // ── Refresh ───────────────────────────────────────────────────────────────────
-
 let autoRefreshTimer = null
 
 async function refresh() {
   const btn = document.getElementById('btn-refresh')
   btn.disabled = true
   clearTimeout(autoRefreshTimer)
-
   const t0 = Date.now()
   try {
     setStatus('Načítám…')
-    const results = await findPassingTrains()
-    renderResults(results, Date.now() - t0)
+    renderResults(await findPassingTrains(), Date.now() - t0)
   } catch (e) {
     setStatus(`Chyba: ${e.message}`)
   } finally {
@@ -377,11 +407,8 @@ async function refresh() {
   }
 }
 
-function setStatus(msg) {
-  document.getElementById('status').textContent = msg
-}
+function setStatus(msg) { document.getElementById('status').textContent = msg }
 
-// Spustit při načtení stránky
 refresh()
 </script>
 </body>
