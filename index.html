@@ -86,7 +86,7 @@
       padding: 14px 16px;
       display: grid;
       grid-template-columns: auto 1fr;
-      grid-template-rows: auto auto auto;
+      grid-template-rows: auto auto;
       column-gap: 16px;
       row-gap: 3px;
     }
@@ -118,15 +118,16 @@
     .delay-late  { color: #f44336; }
     .delay-early { color: #666; }
 
-    /* Dopravce + typ + číslo – vpravo druhý řádek */
+    /* Dopravce + typ + číslo + směr – vpravo první řádek */
     .card-train {
       grid-column: 2;
-      grid-row: 2;
+      grid-row: 1;
       font-size: 15px;
       color: #ccc;
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: space-between;
+      gap: 8px;
       align-self: start;
     }
 
@@ -146,23 +147,21 @@
     .train-type { font-weight: 700; color: #ddd; }
     .train-num  { color: #888; }
 
-    /* Trasa – vpravo třetí řádek */
+    /* Trasa – vpravo druhý řádek */
     .card-route-line {
       grid-column: 2;
-      grid-row: 3;
+      grid-row: 2;
       font-size: 13px;
       color: #777;
       align-self: start;
     }
     .card-route-line .sep { margin: 0 4px; color: #444; }
 
-    /* Směr – vpravo nahoře */
+    /* Směr – inline vpravo v řádku s train info */
     .card-dir {
-      grid-column: 2;
-      grid-row: 1;
       font-size: 14px;
       font-weight: 700;
-      align-self: start;
+      white-space: nowrap;
     }
     .dir-kyje      { color: #4a9eff; }
     .dir-bechovice { color: #ff9a3c; }
@@ -376,13 +375,15 @@ function renderResults(results, elapsed) {
     const di = dirInfo(r.prevStop)
     return `<div class="card">
       <div class="card-time">${r.actual || r.sched}</div>
-      <div class="card-dir ${di.cls}">${di.text}</div>
-      <div class="card-delay ${dl.cls}">${dl.text}</div>
       <div class="card-train">
-        <span class="carrier-badge ${c.cls}">${c.label}</span>
-        <span class="train-type">${r.trainType}</span>
-        <span class="train-num">${r.trainNum}</span>
+        <span>
+          <span class="carrier-badge ${c.cls}">${c.label}</span>
+          <span class="train-type">${r.trainType}</span>
+          <span class="train-num">${r.trainNum}</span>
+        </span>
+        <span class="card-dir ${di.cls}">${di.text}</span>
       </div>
+      <div class="card-delay ${dl.cls}">${dl.text}</div>
       <div class="card-route-line">${r.from}<span class="sep">→</span>${r.to}</div>
     </div>`
   }).join('')
