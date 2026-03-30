@@ -312,6 +312,162 @@ Layers\Bezbarierovost / load          ← bezbariérová přístupnost
 
 1. Jak dlouho vydrží session cookie bez interakce?
 2. Funguje `Users/login` pro programatické získání cookie (email + heslo)?
-3. Jak optimalizovat loadDetail volání – nyní ~300 requestů, trvá ~60s
+3. ~~Jak optimalizovat loadDetail volání – nyní ~300 requestů, trvá ~60s~~ **VYŘEŠENO:** ThreadPoolExecutor(30) → ~8s
 4. Jak rozlišit v HTML průjezd (`<span>`) vs. zastávku (`<b>`) spolehlivě?
-5. Má InfoTabule/loadTabule průjezdy nebo jen komerční zastávky?
+5. Má InfoTabule/loadTabule průjezdy nebo jen komerční zastávky? **ODPOVĚĎ:** Jen komerční zastávky.
+
+---
+
+## Aktuální stav – fungující Python script (30.3.2026)
+
+**Soubor:** `test_dolni_pocernice.py`
+
+### Co script dělá
+
+Zobrazí seznam vlaků projíždějících stanicí Praha-Dolní Počernice v příštích N minutách (výchozí: 30), včetně vlaků, které ve stanici **nezastavují** (průjezdy).
+
+### Workflow
+
+```
+1. GET všechny aktivní vlaky (load2) → XOR dekódování → ~460–580 vlaků
+2. Bbox filtr (S-JTSK) → vlaky v okruhu Prahy → ~200–300 vlaků
+3. Paralelně (30 workerů): loadDetail(onlyCommercialStop=0) pro každý vlak
+4. Parsovat HTML trasy → najít zastávku s data-infotabule == '53036'
+5. time_in_window() → filtrovat na příštích 30 minut
+6. Seřadit podle plánovaného času → vypsat
+```
+
+### Klíčové parametry
+
+| Parametr | Hodnota | Popis |
+|---|---|---|
+| `STATION_SR70` | `53036` | Praha-Dolní Počernice (ZST_SR70 kód) |
+| `WINDOW_MINUTES` | `30` | Okno dopředu v minutách |
+| `WORKERS` | `30` | Počet paralelních loadDetail requestů |
+| `BBOX` | `(-850000,-620000,-1150000,-950000)` | S-JTSK bbox pro Prahu + okolí |
+
+### Výkon
+
+- Celkový čas: ~7–10 sekund (z toho ~6s paralelní loadDetail)
+- Bez parallelizace by bylo ~90–120s (sekvenční)
+
+### Ukázkový výstup
+
+```
+══════════════════════════════════════════════════════════════
+  Praha-Dolní Počernice  |  příštích 30 min  |  09:29:05
+══════════════════════════════════════════════════════════════
+
+  09:29  R   945     Praha hl.n.              → Hradec Králové hl.n.   včas
+  09:34  Os  9320    Poříčany                 → Praha M.n.-dvorana     včas
+  09:34  Os  9413    Praha hl.n.              → Milovice                +1 min
+  09:35  Os  28217   Praha hl.n.              → Úvaly                  včas
+  09:39  LE  1244    Bohumín                  → Praha hl.n.            +7 min
+
+  5 vlaků
+══════════════════════════════════════════════════════════════
+```
+
+### Závislosti
+
+Žádné – pouze Python 3 standard library (`urllib`, `base64`, `json`, `html.parser`, `concurrent.futures`).
+
+### Spuštění
+
+```bash
+python3 test_dolni_pocernice.py
+```
+
+---
+
+## Plán přepisu na HTML/JS (GitHub Pages + iPhone PWA)
+
+### Cíl
+
+Statická HTML stránka bez backendu, přístupná z iPhonu u trati. Přidatelná na plochu jako PWA (vypadá jako nativní app).
+
+**Cílový soubor:** `index.html` (vše v jednom souboru, žádné závislosti)
+
+### Proč jde HTML/JS přímý přístup na API
+
+API vrací `Access-Control-Allow-Origin: *` → prohlížeč může volat API přímo z JS bez proxy serveru.
+
+### Mapa Python → JavaScript
+
+| Python | JavaScript | Poznámka |
+|--------|-----------|----------|
+| `urllib.request` | `fetch()` | nativní async |
+| `base64.b64decode(x)` | `atob(x)` | vestavěný |
+| `base64.b64encode(x)` | `btoa(x)` | vestavěný |
+| XOR loop | stejný algoritmus s `Uint8Array` | |
+| `json.loads()` | `JSON.parse()` | |
+| `ThreadPoolExecutor(30)` | `Promise.all()` | nativně paralelní, bez limitu |
+| `HTMLParser` | `DOMParser` | nativní DOM parsing |
+| `datetime.now()` | `new Date()` | |
+| `timedelta` | `Date` aritmetika | |
+
+### Klíčové JS funkce
+
+```js
+// XOR decode – stejný algoritmus jako Python
+function xorDecode(b64) {
+  const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+  for (const delta of [0, -1]) {
+    const d = new Date(); d.setDate(d.getDate() + delta)
+    const key = new TextEncoder().encode(
+      d.getFullYear() +
+      String(d.getMonth()+1).padStart(2,'0') +
+      String(d.getDate()).padStart(2,'0')
+    )
+    const dec = raw.map((b, i) => b ^ key[i % key.length])
+    try { return JSON.parse(new TextDecoder().decode(dec)) } catch {}
+  }
+  throw new Error('XOR decode selhal')
+}
+
+// API volání
+async function apiPost(module, action, params = {}) {
+  const body = new URLSearchParams({ module, action, ...params })
+  const res = await fetch(
+    `https://mapy.spravazeleznic.cz/serverside/request2.php?module=${encodeURIComponent(module)}&&action=${encodeURIComponent(action)}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' }, body }
+  )
+  return res.json()
+}
+
+// Paralelní fetch tras – ekvivalent ThreadPoolExecutor
+const results = await Promise.all(nearbyTrains.map(t => fetchAndMatch(t)))
+```
+
+### UI design pro iPhone
+
+- Tmavé pozadí (čitelné na slunci)
+- Velký font (min 16px, čísla vlaků tučně)
+- Jeden tlačítko **Refresh** (nebo automatické obnovení každé 2 min)
+- Tabulka: `čas | typ | číslo | z → do | zpoždění`
+- Barevné kódování zpoždění: zelená = včas, žlutá = 1–5 min, červená = ≥6 min
+- Spinner / loading state během fetchování
+- Zobrazit čas posledního obnovení
+
+### PWA meta tagy
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vlaky">
+```
+
+### GitHub Pages nasazení
+
+1. `index.html` nahrát do repozitáře `petrpavelek6/trains`
+2. GitHub → Settings → Pages → Source: `main` branch, `/ (root)`
+3. URL: `https://petrpavelek6.github.io/trains/`
+4. iPhone: otevřít v Safari → Sdílet → Přidat na plochu
+
+### Ověření
+
+1. Otevřít `index.html` lokálně (`file://`) v Chrome → funguje?
+2. Nahrát na GitHub → GitHub Pages URL → funguje?
+3. Otevřít na iPhonu v Safari → přidat na plochu → funguje?
+4. Porovnat výsledky s Python scriptem (stejné vlaky?)
