@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Vlaky">
+  <title>Vlaky – Dolní Počernice</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0d;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 16px;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    header {
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      padding: 14px 16px 10px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding-top: calc(14px + env(safe-area-inset-top));
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.3px;
+    }
+
+    header .meta {
+      font-size: 13px;
+      color: #888;
+      margin-top: 2px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #btn-refresh {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #ccc;
+      font-size: 13px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #btn-refresh:active { background: #3a3a3a; }
+    #btn-refresh:disabled { opacity: 0.5; }
+
+    #status {
+      font-size: 13px;
+      color: #666;
+      padding: 8px 16px;
+      min-height: 30px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    tr { border-bottom: 1px solid #1f1f1f; }
+    tr:last-child { border-bottom: none; }
+
+    td {
+      padding: 10px 8px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    td:first-child { padding-left: 16px; }
+    td:last-child  { padding-right: 16px; }
+
+    .col-time   { font-size: 20px; font-weight: 700; color: #fff; min-width: 52px; }
+    .col-train  { font-size: 14px; color: #aaa; min-width: 70px; }
+    .col-dir    { font-size: 13px; color: #777; min-width: 100px; }
+    .col-route  { font-size: 14px; color: #ccc; width: 100%; }
+    .col-route .from { color: #aaa; font-size: 13px; }
+    .col-route .arrow { color: #555; margin: 0 4px; }
+    .col-route .to { color: #ddd; }
+    .col-delay  { font-size: 14px; font-weight: 600; text-align: right; white-space: nowrap; min-width: 70px; }
+
+    .delay-ok   { color: #4caf50; }
+    .delay-warn { color: #ffc107; }
+    .delay-late { color: #f44336; }
+    .delay-early { color: #888; }
+
+    .actual-time { font-size: 12px; color: #888; margin-left: 4px; }
+
+    .carrier-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .carrier-CD  { background: #1a3a6b; color: #7eb3ff; }
+    .carrier-RJ  { background: #4a1a00; color: #ffaa44; }
+    .carrier-LE  { background: #001a4a; color: #44aaff; }
+    .carrier-GW  { background: #1a2a1a; color: #88cc88; }
+    .carrier-XX  { background: #2a2a2a; color: #999; }
+
+    #empty {
+      text-align: center;
+      color: #555;
+      padding: 40px 16px;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1 id="station-name">Praha – Dolní Počernice</h1>
+  <div class="meta">
+    <span id="header-time">příštích 30 min</span>
+    <button id="btn-refresh" onclick="refresh()">Obnovit</button>
+  </div>
+</header>
+
+<div id="status">Připraveno.</div>
+<div id="content"></div>
+
+<script>
+const CONFIG = {
+  stationSR70:   '53036',
+  stationName:   'Praha – Dolní Počernice',
+  windowMinutes: 30,
+  bbox: { xMin: -850000, xMax: -620000, yMin: -1150000, yMax: -950000 },
+  concurrency:   30,
+}
+
+const BASE_URL = 'https://mapy.spravazeleznic.cz/serverside/request2.php'
+
+// ── API ──────────────────────────────────────────────────────────────────────
+
+async function apiPost(module, action, params = {}) {
+  const body = new URLSearchParams({ module, action, ...params })
+  const res = await fetch(
+    `${BASE_URL}?module=${encodeURIComponent(module)}&&action=${encodeURIComponent(action)}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body,
+    }
+  )
+  return res.json()
+}
+
+// ── XOR dekódování ────────────────────────────────────────────────────────────
+
+function xorDecode(b64) {
+  const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+  const today = new Date()
+  for (const delta of [0, -1]) {
+    const d = new Date(today)
+    d.setDate(d.getDate() + delta)
+    const key = new TextEncoder().encode(
+      d.getFullYear().toString() +
+      String(d.getMonth() + 1).padStart(2, '0') +
+      String(d.getDate()).padStart(2, '0')
+    )
+    const dec = raw.map((b, i) => b ^ key[i % key.length])
+    try { return JSON.parse(new TextDecoder().decode(dec)) } catch {}
+  }
+  throw new Error('XOR decode selhal')
+}
+
+// ── Parser trasy vlaku ────────────────────────────────────────────────────────
+
+function parseRoute(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const stops = []
+  for (const tr of doc.querySelectorAll('tr')) {
+    const tds = tr.querySelectorAll('td')
+    if (tds.length < 1) continue
+    const nameTd = tds[0]
+    const name = nameTd.textContent.trim()
+    if (!name) continue
+    const sr70 = (nameTd.getAttribute('data-infotabule') || '').trim()
+    const times = []
+    for (let i = 3; i < tds.length; i++) {
+      const t = tds[i].textContent.trim()
+      if (t) times.push(t)
+    }
+    stops.push({ name, sr70, times })
+  }
+  return stops
+}
+
+// ── Pomocné funkce ────────────────────────────────────────────────────────────
+
+function timeInWindow(timeStr, now, windowMin) {
+  timeStr = timeStr.trim().replace(/[()]/g, '')
+  if (!timeStr || !timeStr.includes(':')) return false
+  const [h, m] = timeStr.split(':').map(Number)
+  const t = new Date(now)
+  t.setHours(h, m, 0, 0)
+  if (t < new Date(now.getTime() - 2 * 3600 * 1000)) t.setDate(t.getDate() + 1)
+  return t >= now && t <= new Date(now.getTime() + windowMin * 60 * 1000)
+}
+
+async function promisePool(items, fn, concurrency) {
+  const results = new Array(items.length)
+  let idx = 0
+  async function worker() {
+    while (idx < items.length) {
+      const i = idx++
+      results[i] = await fn(items[i], i)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker))
+  return results
+}
+
+function carrierInfo(d) {
+  if (d.includes('České dráhy')) return { label: 'ČD', cls: 'carrier-CD' }
+  if (d.includes('RegioJet'))    return { label: 'RJ', cls: 'carrier-RJ' }
+  if (d.includes('Leo Express')) return { label: 'LE', cls: 'carrier-LE' }
+  if (d.includes('GWTR'))        return { label: 'GW', cls: 'carrier-GW' }
+  return { label: d.slice(0, 2) || '?', cls: 'carrier-XX' }
+}
+
+function dirStr(prev) {
+  if (!prev) return ''
+  if (prev.includes('Kyje'))      return '← Kyje'
+  if (prev.includes('Běchovice')) return '← Běchovice'
+  return '← ' + prev.slice(0, 14)
+}
+
+function delayInfo(delay, actual, sched) {
+  const d = Number(delay) || 0
+  const showActual = actual && actual !== sched ? actual : ''
+  if (d > 5)  return { text: `+${d} min`, cls: 'delay-late',  actual: showActual }
+  if (d > 0)  return { text: `+${d} min`, cls: 'delay-warn',  actual: showActual }
+  if (d < 0)  return { text: `${d} min`,  cls: 'delay-early', actual: showActual }
+  return       { text: 'včas',            cls: 'delay-ok',    actual: showActual }
+}
+
+// ── Hlavní logika ─────────────────────────────────────────────────────────────
+
+async function findPassingTrains() {
+  const resp = await apiPost('Layers\\OsVlaky', 'load2')
+  let encoded = resp.result
+  if (Array.isArray(encoded)) encoded = encoded[0]
+  const trains = xorDecode(encoded)
+
+  const { xMin, xMax, yMin, yMax } = CONFIG.bbox
+  const nearby = trains
+    .filter(t => {
+      const [x, y] = t.g.c
+      return x >= xMin && x <= xMax && y >= yMin && y <= yMax
+    })
+    .map(t => t.p)
+
+  setStatus(`Vlaky v oblasti: ${nearby.length} – stahuji trasy…`)
+
+  const now = new Date()
+  let done = 0
+
+  async function fetchAndMatch(t) {
+    try {
+      const b64 = btoa(t.id)
+      const detail = await apiPost('Layers\\OsVlaky', 'loadDetail', {
+        trainNumber: b64,
+        onlyCommercialStop: 0,
+      })
+      const stops = parseRoute(detail.detail || '')
+      for (let i = 0; i < stops.length; i++) {
+        const stop = stops[i]
+        if (stop.sr70 !== CONFIG.stationSR70) continue
+        const times = stop.times
+        const sched  = times[0] || ''
+        const actual = times[1] ? times[1].replace(/[()]/g, '') : ''
+        const check  = actual || sched
+        if (!timeInWindow(check, now, CONFIG.windowMinutes)) return null
+        return {
+          sched, actual,
+          trainType: t.tt || '',
+          trainNum:  t.tn || '',
+          from:      t.fn || '',
+          to:        t.ln || '',
+          delay:     t.de || 0,
+          prevStop:  i > 0 ? stops[i - 1].name : '',
+          carrier:   t.d  || '',
+        }
+      }
+    } catch {}
+    finally {
+      done++
+      if (done % 20 === 0 || done === nearby.length) {
+        setStatus(`Načítám trasy… ${done} / ${nearby.length}`)
+      }
+    }
+    return null
+  }
+
+  const raw = await promisePool(nearby, fetchAndMatch, CONFIG.concurrency)
+  return raw
+    .filter(Boolean)
+    .sort((a, b) => a.sched.localeCompare(b.sched))
+}
+
+// ── Vykreslení ────────────────────────────────────────────────────────────────
+
+function renderResults(results, elapsed) {
+  const now = new Date()
+  const timeStr = now.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  setStatus(`${results.length} vlak${results.length === 1 ? '' : results.length < 5 ? 'y' : 'ů'} · obnoveno ${timeStr} · ${(elapsed / 1000).toFixed(1)}s`)
+
+  const content = document.getElementById('content')
+  if (!results.length) {
+    content.innerHTML = `<div id="empty">Žádné vlaky v příštích ${CONFIG.windowMinutes} min.</div>`
+    return
+  }
+
+  const rows = results.map(r => {
+    const c = carrierInfo(r.carrier)
+    const dl = delayInfo(r.delay, r.actual, r.sched)
+    const dir = dirStr(r.prevStop)
+    const actualSpan = dl.actual
+      ? `<span class="actual-time">→ ${dl.actual}</span>` : ''
+    return `<tr>
+      <td class="col-time">${r.sched}</td>
+      <td class="col-train">
+        <span class="carrier-badge ${c.cls}">${c.label}</span>
+        <span style="font-weight:600">${r.trainType}</span>
+        <span style="color:#888">${r.trainNum}</span>
+      </td>
+      <td class="col-dir">${dir}</td>
+      <td class="col-route">
+        <span class="from">${r.from}</span>
+        <span class="arrow">→</span>
+        <span class="to">${r.to}</span>
+      </td>
+      <td class="col-delay ${dl.cls}">${dl.text}${actualSpan}</td>
+    </tr>`
+  }).join('')
+
+  content.innerHTML = `<table>${rows}</table>`
+}
+
+// ── Refresh ───────────────────────────────────────────────────────────────────
+
+let autoRefreshTimer = null
+
+async function refresh() {
+  const btn = document.getElementById('btn-refresh')
+  btn.disabled = true
+  clearTimeout(autoRefreshTimer)
+
+  const t0 = Date.now()
+  try {
+    setStatus('Načítám…')
+    const results = await findPassingTrains()
+    renderResults(results, Date.now() - t0)
+  } catch (e) {
+    setStatus(`Chyba: ${e.message}`)
+  } finally {
+    btn.disabled = false
+    autoRefreshTimer = setTimeout(refresh, 2 * 60 * 1000)
+  }
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg
+}
+
+// Spustit při načtení stránky
+refresh()
+</script>
+</body>
+</html>
