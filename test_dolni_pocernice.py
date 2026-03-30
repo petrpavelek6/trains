@@ -155,7 +155,7 @@ def find_passing_trains(sr70: str, now: datetime) -> list:
             stops = get_train_route(t["id"])
         except Exception:
             return None
-        for stop in stops:
+        for i, stop in enumerate(stops):
             if stop.get("sr70", "").strip() != sr70:
                 continue
             times = stop.get("times", [])
@@ -164,6 +164,7 @@ def find_passing_trains(sr70: str, now: datetime) -> list:
             check  = actual if actual else sched
             if not time_in_window(check, now, WINDOW_MINUTES):
                 return None
+            prev_stop = stops[i - 1]["name"] if i > 0 else ""
             return {
                 "sched":      sched,
                 "actual":     actual,
@@ -172,6 +173,8 @@ def find_passing_trains(sr70: str, now: datetime) -> list:
                 "from":       t.get("fn", ""),
                 "to":         t.get("ln", ""),
                 "delay":      t.get("de", 0),
+                "prev_stop":  prev_stop,
+                "carrier":    t.get("d", ""),
             }
         return None
 
@@ -201,10 +204,24 @@ def main():
 
     print()
     for r in results:
-        delay_str  = f"+{r['delay']} min" if r["delay"] else "včas  "
+        d = r["delay"]
+        delay_str  = f"+{d} min" if d > 0 else (f"{d} min" if d < 0 else "včas  ")
         actual_str = f"  → {r['actual']}" if r["actual"] and r["actual"] != r["sched"] else ""
-        print(f"  {r['sched']}  {r['train_type']:<3} {r['train_num']:<6}  "
-              f"{r['from'][:24]:<24} → {r['to'][:24]:<24}  {delay_str}{actual_str}")
+        prev = r["prev_stop"]
+        if "Kyje" in prev:
+            dir_str = "← Kyje    "
+        elif "Běchovice" in prev:
+            dir_str = "← Běchovice"
+        else:
+            dir_str = f"← {prev[:11]}"
+        carrier = r["carrier"]
+        if "České dráhy" in carrier:   carrier_str = "ČD "
+        elif "RegioJet"   in carrier:  carrier_str = "RJ "
+        elif "Leo Express" in carrier: carrier_str = "LE "
+        elif "GWTR"       in carrier:  carrier_str = "GW "
+        else:                          carrier_str = carrier[:3]
+        print(f"  {r['sched']}  {r['train_type']:<3} {r['train_num']:<6}  {dir_str}  "
+              f"{carrier_str}  {r['from'][:18]:<18} → {r['to'][:18]:<18}  {delay_str}{actual_str}")
 
     print(f"\n  {len(results)} vlaků\n{'═'*62}\n")
 
