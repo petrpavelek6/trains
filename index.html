@@ -373,7 +373,7 @@ function renderResults(results, elapsed) {
     const dl = delayInfo(r.delay)
     const di = dirInfo(r.prevStop)
     return `<div class="card">
-      <div class="card-time">${r.sched}</div>
+      <div class="card-time">${r.actual || r.sched}</div>
       <div class="card-delay ${dl.cls}">${dl.text}</div>
       <div class="card-train">
         <span class="carrier-badge ${c.cls}">${c.label}</span>
