@@ -88,7 +88,7 @@
       grid-template-columns: auto 1fr;
       grid-template-rows: auto auto auto;
       column-gap: 16px;
-      row-gap: 2px;
+      row-gap: 3px;
     }
 
     /* Čas vlevo nahoře */
@@ -118,10 +118,10 @@
     .delay-late  { color: #f44336; }
     .delay-early { color: #666; }
 
-    /* Dopravce + typ + číslo – vpravo nahoře */
+    /* Dopravce + typ + číslo – vpravo druhý řádek */
     .card-train {
       grid-column: 2;
-      grid-row: 1;
+      grid-row: 2;
       font-size: 15px;
       color: #ccc;
       display: flex;
@@ -146,25 +146,23 @@
     .train-type { font-weight: 700; color: #ddd; }
     .train-num  { color: #888; }
 
-    /* Trasa – vpravo druhý řádek */
+    /* Trasa – vpravo třetí řádek */
     .card-route-line {
       grid-column: 2;
-      grid-row: 2;
+      grid-row: 3;
       font-size: 13px;
       color: #777;
       align-self: start;
     }
     .card-route-line .sep { margin: 0 4px; color: #444; }
 
-    /* Směr – přes oba sloupce, spodní řádek */
+    /* Směr – vpravo nahoře */
     .card-dir {
-      grid-column: 1 / 3;
-      grid-row: 3;
-      font-size: 18px;
+      grid-column: 2;
+      grid-row: 1;
+      font-size: 14px;
       font-weight: 700;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid #2a2a2a;
+      align-self: start;
     }
     .dir-kyje      { color: #4a9eff; }
     .dir-bechovice { color: #ff9a3c; }
@@ -378,14 +376,14 @@ function renderResults(results, elapsed) {
     const di = dirInfo(r.prevStop)
     return `<div class="card">
       <div class="card-time">${r.actual || r.sched}</div>
+      <div class="card-dir ${di.cls}">${di.text}</div>
+      <div class="card-delay ${dl.cls}">${dl.text}</div>
       <div class="card-train">
         <span class="carrier-badge ${c.cls}">${c.label}</span>
         <span class="train-type">${r.trainType}</span>
         <span class="train-num">${r.trainNum}</span>
       </div>
-      <div class="card-delay ${dl.cls}">${dl.text}</div>
       <div class="card-route-line">${r.from}<span class="sep">→</span>${r.to}</div>
-      <div class="card-dir ${di.cls}">${di.text}</div>
     </div>`
   }).join('')
 }
